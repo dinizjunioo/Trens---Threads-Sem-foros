@@ -1,22 +1,37 @@
 #include "trem.h"
 #include <QtCore>
+#include <pthread.h>
 #include <iostream>
 #include <semaphore.h>
+#define SHARED 0
+#define N 1
 //Construtor
 
-Trem::Trem(int ID, int x, int y){
+Trem::Trem(int ID, int x, int y, int velocidade, sem_t &semafore1empty,
+           sem_t &semafore1full, sem_t &mutexx){
 
     // não é uma boa inicializar tanta coisa no construtor
 
     this->ID = ID;
     this->x = x;
     this->y = y;
-    velocidade1 = 100;
-    velocidade2 = 200;
-    velocidade3 = 100;
-    velocidade4 = 100;
-    velocidade5 = 100;
-    sem_init(&semaphore1,0,0);
+    this->velocidade = velocidade;
+    this->semaforo1empty = &semafore1empty;
+    this->semaforo1full = &semafore1full;
+    this->mutex = &mutexx;
+    //sem_init(&semaphore1empty,SHARED,N);
+    //sem_init(&semaphore1full,SHARED,SHARED);
+    //sem_init(&mutex,SHARED,N);
+
+    //pthread_mutex_init(&mutex, NULL);
+}
+
+//
+Trem::~Trem()
+{
+    sem_destroy(mutex);
+    sem_destroy(semaforo1empty);
+    sem_destroy(semaforo1full);
 }
 
 //Função a ser executada após executar trem->START
@@ -24,134 +39,130 @@ void Trem::run(){
     while(true){
         switch(ID)
         {
-        case 1:     //Trem 1
-
-            // semaforo1 = (300,30)
-            if (x >= 330-21 && y == 30)
-            {//opa, t1 chegou na secao critica
-               //if(x == 300 && y == 30)
-               //{
-                sem_wait(&semaphore1); //travo secao critica
-                while(y != 150 && x >= 330-21)
+        case 1:
+            // Trem 1
+            if (y <= 150 && x >= 330-21)
+            {
+                //opa, t1 chegou na secao critica
+                std::cout << " End: " << std::endl;
+                sem_wait(semaforo1full); //travo secao critica
+                std::cout << " End2: " << std::endl;
+                sem_wait(mutex);
+                std::cout << " End3: "  << std::endl;
+                std::cout << "'-coe-'" << std::endl;
+                while(y <= 150 && x > 300)
                 {
-                    if(velocidade1 == 200){
-                        // não faça nada
-                        // break;
-                        emit updateGUI(ID, x,y);
-                    }
-                    else{
-                    if (y == 30 && x <330)
-                        x+=10;
-                    else if (x == 330 && y < 150)
-                        y+=10;
-                    else if (x > 60 && y == 150)
-                        x-=10;
-                    else
-                        y-=10;
-                    emit updateGUI(ID, x,y);    //Emite um sinal
-                    msleep(velocidade1);
+                    std::cout << "entrei na secao critica trem1" << std::endl;
+                    if(velocidade != 200)
+                    {
+                        if (y == 30 && x <330)
+                             x+=10;
+                        else if (x == 330 && y < 150)
+                             y+=10;
+                        else if (x > 60 && y == 150)
+                             x-=10;
+                        else
+                             y-=10;
+
+                        emit updateGUI(ID, x,y);    //Emite um sinal
+                        msleep(velocidade);
                     }
                 }
-                sem_post(&semaphore1);//libero secao critica
+                //pthread_mutex_unlock(&mutex);
+                sem_post(mutex);//libero secao critica
+                int tr5;
+                sem_getvalue(semaforo1empty, &tr5);
+                std::cout << "trem1-"<< tr5 << std::endl;
+                if(tr5==0)sem_post(semaforo1empty);
+                std::cout << tr5 << "-trem1-" << std::endl;
             }
-            //move(ID,x,y);
-            // verificar onde ele está
-            // onde_esta_o_trem1()
-            // enquando o semaphoro1
+
             //
-            if(velocidade1 == 200){  break;}
-            else{
-            if (y == 30 && x <330)
-                x+=10;
-            else if (x == 330 && y < 150)
-                y+=10;
-            else if (x > 60 && y == 150)
-                x-=10;
-            else
-                y-=10;
-            emit updateGUI(ID, x,y);    //Emite um sinal
-            msleep(velocidade1);
+            // liberando o semaforo1
+            int tr2;
+            sem_getvalue(semaforo1empty,&tr2);
+            if(tr2==0)sem_post(semaforo1empty);
+
+            if(velocidade != 200)
+            {
+                if (y == 30 && x <330)
+                     x+=10;
+                else if (x == 330 && y < 150)
+                     y+=10;
+                else if (x > 60 && y == 150)
+                     x-=10;
+                else
+                     y-=10;
+                emit updateGUI(ID, x,y);    //Emite um sinal
+                msleep(velocidade);
             }
             break;
+
         case 2: //Trem 2
 
-            // ele já esta na secao na secao critica
-
-            if((x >= 330 && x <= 330+21) && y == 30)
+            if((x >= 330 && x <=330+21) && (y >= 30 && y<=150))
             {
-                std::cout << "trem2 - " << x << std::endl;
-                sem_wait(&semaphore1);
-                while(x < 330+21)
+                std::cout << "entrei aqui no trem 2" << std::endl;
+                //pthread_mutex_lock(&mutex);
+                sem_wait(semaforo1empty);
+                sem_wait(mutex);
+                while((x >= 330 && x <=330+10) && (y >= 30 && y<=150))
                 {
-                    std::cout << "secao critica" << "- velocidade" << 200 - velocidade2 <<std::endl;
+                    if(velocidade != 200)
+                    {
+                        if (y == 30 && x <600)
+                            x+=10;
+                        else if (x == 600 && y < 150)
+                            y+=10;
+                        else if (x > 330 && y == 150)
+                            x-=10;
+                        else
+                            y-=10;
 
-                    if(velocidade2 == 200){
-                        // não faça nada
-                        std::cout << "velocidade zero do trem2" << std::endl;
-                        emit updateGUI(ID, x,y);
-                         break;
-                    }else{
-                        std::cout << "aumentei a velocidade do trem2" << std::endl;
-
-                    if (y == 30 && x <600)
-                        x+=10;
-                    else if (x == 600 && y < 150)
-                        y+=10;
-                    else if (x > 330 && y == 150)
-                        x-=10;
-                    else
-                        y-=10;
-                    emit updateGUI(ID, x,y);    //Emite um sinal
-                    msleep(velocidade2);
+                        emit updateGUI(ID, x,y);    //Emite um sinal
+                        msleep(velocidade);
                     }
                 }
-                sem_post(&semaphore1);
+                sem_post(mutex);
+                if(tr==0)sem_post(semaforo1full);
+            //pthread_mutex_unlock(&mutex);
+            //sem_post(&semaphore1full); //travo secao critica
             }
-
-            //opa, t2 quer entrar na secao critica
-            else if (x >= 300+21 && y == 150)
+            std::cout << x << " " << y << std::endl;
+            if(x == 360 && y == 30)
             {
-               //if(x == 300 && y == 30)
-               //{
-               sem_wait(&semaphore1); //travo secao critica
-                while(y != 30 && x >= 330-21)
-                {
-                    if(velocidade2 == 200){
-                        emit updateGUI(ID, x,y);
-                        // não faça nada
-                         break;
-                    }else{
-
-                    if (y == 30 && x <600)
-                        x+=10;
-                    else if (x == 600 && y < 150)
-                        y+=10;
-                    else if (x > 330 && y == 150)
-                        x-=10;
-                    else
-                        y-=10;
-                    emit updateGUI(ID, x,y);    //Emite um sinal
-                    msleep(velocidade2);
-                    }
-                }
-               sem_post(&semaphore1);//libero secao critica
+                std::cout << "trem 2 saiu do semaforo: " <<tr << std::endl;
+                //sem_post(&semaphore1full);
             }
 
-            if(velocidade2 == 200){
-                // não faça nada
-                 break;
-            }else{
+            // liberando o semaforo1
+            int tr;
+            sem_getvalue(semaforo1full,&tr);
+            if(tr==0)sem_post(semaforo1full);
 
-            if (y == 30 && x <600)
-                x+=10;
-            else if (x == 600 && y < 150)
-                y+=10;
-            else if (x > 330 && y == 150)
-                x-=10;
-            else
-                y-=10;
-            emit updateGUI(ID, x,y);    //Emite um sinal
-            msleep(velocidade2);
+
+            if(x == 360 && y == 150)
+            {
+                //int tr;
+                //sem_getvalue(semaforo1full,&tr);
+                //std::cout << "trem 2 quer entrar: " <<tr << std::endl;
+                //sem_wait(semaforo1full);
+                //sem_post(&semaphore1full);
+            }
+
+            if(velocidade != 200)
+            {
+                if (y == 30 && x <600)
+                    x+=10;
+                else if (x == 600 && y < 150)
+                    y+=10;
+                else if (x > 330 && y == 150)
+                    x-=10;
+                else
+                    y-=10;
+
+                emit updateGUI(ID, x,y);    //Emite um sinal
+                msleep(velocidade);
             }
             break;
         case 3: //Trem 3
@@ -164,7 +175,7 @@ void Trem::run(){
             else
                 y-=10;
             emit updateGUI(ID, x,y);    //Emite um sinal
-            msleep(velocidade3);
+            msleep(velocidade);
             break;
         case 4: //Trem 4
             if (y == 150 && x <460)
@@ -176,7 +187,7 @@ void Trem::run(){
             else
                 y-=10;
             emit updateGUI(ID, x,y);    //Emite um sinal
-            msleep(velocidade4);
+            msleep(velocidade);
             break;
         case 5: //Trem 5
             if (y == 150 && x <730)
@@ -188,7 +199,7 @@ void Trem::run(){
             else
                 y-=10;
             emit updateGUI(ID, x,y);    //Emite um sinal
-            msleep(velocidade5);
+            msleep(velocidade);
             break;
         default:
             break;
@@ -197,51 +208,14 @@ void Trem::run(){
 }
 
 
-void Trem::get_velo1(int value)
+void Trem::get_velo(int value)
 {
-    velocidade1 = value;
+    velocidade = value;
 }
 
 
-void Trem::get_velo2(int value)
-{
-    velocidade2 = value;
-}
 
-void Trem::get_velo3(int value)
-{
-    velocidade3 = value;
-}
 
-void Trem::get_velo4(int value)
-{
-    velocidade4 = value;
-}
-
-void Trem::get_velo5(int value)
-{
-    velocidade5 = value;
-}
-
-void move (int id, int x, int y)
-{
-   /* if(velocidade1 == 200)
-    {
-        //nao faça nada
-        //continue;
-    }else{
-        if (y == 30 && x <330)
-            x+=10;
-        else if (x == 330 && y < 150)
-            y+=10;
-        else if (x > 60 && y == 150)
-            x-=10;
-        else
-            y-=10;
-        emit updateGUI(id, x,y);    //Emite um sinal
-        msleep(velocidade1);
-    }*/
-}
 //void Trem::restart(int ID)
 //{
 //    if (ID == 1)

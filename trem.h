@@ -5,7 +5,7 @@
 
 
 #include <semaphore.h>
-
+#include <pthread.h>
 
 /*
  * Classe Trem herda QThread
@@ -18,16 +18,13 @@ class Trem: public QThread{
  Q_OBJECT
 public:
 
-    Trem(int,int,int);  //construtor
+    Trem(int,int,int,int,sem_t&,sem_t&,sem_t&);  //construtor
+    ~Trem(); //destructor
     void run();         //função a ser executada pela thread
 
     // funções que recebem o valor atual do slide e assim controlam a velocidade de cada trem
-    void get_velo1(int value);
-    void get_velo2(int value);
-    void get_velo3(int value);
-    void get_velo4(int value);
-    void get_velo5(int value);
-    void move(int,int,int);
+    void get_velo(int value);
+
 //Cria um sinal
 signals:
     void updateGUI(int,int,int);
@@ -38,14 +35,15 @@ private:
    int ID;          //ID do trem
 
    //criar uma struct depois para isso aqui
-   int velocidade1;  //Velocidade. É o tempo de dormir em milisegundos entre a mudança de posição do trem
-   int velocidade2;
-   int velocidade3;
-   int velocidade4;
-   int velocidade5;
+   int velocidade;  //Velocidade. É o tempo de dormir em milisegundos entre a mudança de posição do trem
+
+   sem_t * mutex; // pointer para o mutex
+   sem_t * semaforo1empty; // pointer
+   sem_t * semaforo1full; // pointer
 
    // tratamos a primeira regiao critica nesse semaforo.
-   sem_t semaphore1;
+   //sem_t semaphore1full, semaphore1empty,mutex;
+   //pthread_mutex_t mutex;
 };
 
 #endif // TREM_H

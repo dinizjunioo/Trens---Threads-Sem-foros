@@ -2,6 +2,9 @@
 #include "ui_mainwindow.h"
 #include "trem.h"
 #include <iostream>
+#include <semaphore.h>
+#define SHARED 0
+#define N 1
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -9,12 +12,20 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    //Cria o trem com seu (ID, posição X, posição Y)
-    trem1 = new Trem(1,60,30);
-    trem2 = new Trem(2,330,30);
-    trem3 = new Trem(3,600,30);
-    trem4 = new Trem(4,190,150);
-    trem5 = new Trem(5,460,150);
+    //Cria o trem com seu (ID, posição X, posição Y, velocidade, endereço dos semaphoros)
+
+
+    sem_init(&semaphore1empty,SHARED,N);
+    sem_init(&semaphore1full,SHARED,SHARED);
+    sem_init(&mutex,SHARED,N);
+
+    trem1 = new Trem(1, 60, 30,100,semaphore1empty,semaphore1full,mutex
+                     );
+    trem2 = new Trem(2,330, 30,200,semaphore1empty,semaphore1full,mutex);
+    trem3 = new Trem(3,600, 30,100,semaphore1empty,semaphore1full,mutex);
+    trem4 = new Trem(4,190,150,100,semaphore1empty,semaphore1full,mutex);
+    trem5 = new Trem(5,460,150,100,semaphore1empty,semaphore1full,mutex);
+
 
     //stoped = false;
     /*
@@ -76,7 +87,7 @@ MainWindow::~MainWindow()
 void MainWindow::on_Slider1_valueChanged(int value)
 {
     //passando velocidade para o objeto trem1
-    trem1->get_velo1(200 - value);
+    trem1->get_velo(200 - value);
     if(200 - value == 200)
         std::cout << "trem1 == zero" << std::endl;
         //trem1->terminate();
@@ -88,9 +99,9 @@ void MainWindow::on_Slider1_valueChanged(int value)
 void MainWindow::on_Slider2_valueChanged(int value)
 {
     //passando velocidade para o objeto trem1
-    trem2->get_velo2(200 - value);
-    if(200 - value == 200)
-        trem2->terminate();
+    trem2->get_velo(200 - value);
+    if(200 - value == 200);
+        //trem2->terminate();
     else {
         trem2->start();
     }
@@ -99,7 +110,7 @@ void MainWindow::on_Slider2_valueChanged(int value)
 void MainWindow::on_Slider3_valueChanged(int value)
 {
     //passando velocidade para o objeto trem1
-    trem3->get_velo3(200 - value);
+    trem3->get_velo(200 - value);
     if(200 - value == 200)
         trem3->terminate();
     else {
@@ -110,7 +121,7 @@ void MainWindow::on_Slider3_valueChanged(int value)
 void MainWindow::on_Slider4_valueChanged(int value)
 {
     //passando velocidade para o objeto trem1
-    trem4->get_velo4(200 - value);
+    trem4->get_velo(200 - value);
     if(200 - value == 200)
         //criar um booleano e usar esse terminate em algum outro lugar
         trem4->terminate();
@@ -122,7 +133,7 @@ void MainWindow::on_Slider4_valueChanged(int value)
 void MainWindow::on_Slider5_valueChanged(int value)
 {
     //passando velocidade para o objeto trem1
-    trem5->get_velo5(200 - value);
+    trem5->get_velo(200 - value);
     if(200 - value == 200)
         trem5->terminate();
     else {

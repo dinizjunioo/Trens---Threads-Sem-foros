@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include "trem.h"
+#include <semaphore.h>
+#include <pthread.h>
 
 namespace Ui {
 class MainWindow;
@@ -43,6 +45,8 @@ private:
     Trem *trem3;
     Trem *trem4;
     Trem *trem5;
+    sem_t semaphore1full, semaphore1empty, mutex;
+
 };
 
 #endif // MAINWINDOW_H
